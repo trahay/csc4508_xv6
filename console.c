@@ -114,7 +114,7 @@ uint dereference_pointer(uint addr) {
 
 // Record the current call stack in pcs[] by following the %ebp chain.
 void
-getcallerpcs(void *v, uint pcs[])
+getbacktrace(uint pcs[])
 {
   int i=0;
 #if SOLUTION_EXO1
@@ -131,7 +131,6 @@ getcallerpcs(void *v, uint pcs[])
 #endif
   for(; i < 10; i++)
     pcs[i] = 0;
-
 }
 
 void
@@ -145,7 +144,7 @@ panic(char *s)
   cprintf("\n");
   int i;
   uint pcs[10];
-  getcallerpcs(&s, pcs);
+  getbacktrace(pcs);
   cprintf("Backtrace:\n");
   for(i=0; i<10; i++)
     cprintf("[%d] %p\n", i, pcs[i]);
