@@ -19,7 +19,9 @@ main(void)
 {
   kinit1(end, P2V(4*1024*1024)); // phys page allocator
   kvmalloc();      // kernel page table
+#if EXO1
   mpinit();        // detect other processors
+#endif
   lapicinit();     // interrupt controller
   seginit();       // segment descriptors
   picinit();       // disable pic

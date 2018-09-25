@@ -99,6 +99,14 @@ readeflags(void)
   return eflags;
 }
 
+static inline uint
+read_ebp(void)
+{
+	uint ebp;
+	asm volatile("movl %%ebp,%0" : "=r" (ebp));
+	return ebp;
+}
+
 static inline void
 loadgs(ushort v)
 {

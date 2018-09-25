@@ -67,22 +67,35 @@ release(struct spinlock *lk)
   popcli();
 }
 
+#define SOLUTION_EXO1 1
+#if SOLUTION_EXO1
+uint dereference_pointer(uint addr) {
+  uint value;
+  value = *(uint*)addr;
+  return value;
+}
+#endif
+
 // Record the current call stack in pcs[] by following the %ebp chain.
 void
 getcallerpcs(void *v, uint pcs[])
 {
-  uint *ebp;
-  int i;
-
-  ebp = (uint*)v - 2;
-  for(i = 0; i < 10; i++){
-    if(ebp == 0 || ebp < (uint*)KERNBASE || ebp == (uint*)0xffffffff)
+  int i=0;
+#if SOLUTION_EXO1
+  uint ebp = read_ebp();
+  uint eip = -1;
+  for(i=0; i <10; i++) {
+    if(ebp == 0 || ebp < (uint)KERNBASE || ebp == (uint)0xffffffff) {
       break;
-    pcs[i] = ebp[1];     // saved %eip
-    ebp = (uint*)ebp[0]; // saved %ebp
+    }
+    eip = dereference_pointer(ebp+4);
+    pcs[i] = eip;
+    ebp = dereference_pointer(ebp);
   }
+#endif
   for(; i < 10; i++)
     pcs[i] = 0;
+
 }
 
 // Check whether this cpu is holding the lock.
