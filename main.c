@@ -19,6 +19,7 @@ main(void)
 {
   kinit1(end, P2V(4*1024*1024)); // phys page allocator
   kvmalloc();      // kernel page table
+//#define EXO1 1
 #if EXO1
   mpinit();        // detect other processors
 #endif
