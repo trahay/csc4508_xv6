@@ -311,6 +311,22 @@ wait(void)
   }
 }
 
+// Elect the next process to schedule
+// return 0 if there's no runnable process
+struct proc* elect()
+{
+  /* very dumb election algorithm: browse the list of process and pick the first runnable */
+  int next_proc=0;
+  for(next_proc=0; next_proc<NPROC; next_proc++) {
+    struct proc* p= &ptable.proc[next_proc];
+
+    if(p->state == RUNNABLE) {
+      return p;
+    }
+  }
+  return 0;
+}
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -324,17 +340,21 @@ scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
+  struct proc *cur_process=c->proc;
   c->proc = 0;
   
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
-    // Loop over process table looking for process to run.
+    // Elect a process and run it.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+    p = elect();
+    if(p) {
+
+#if DEBUG_SCHEDULER
+      cprintf("[Scheduler] Switching from process %d to %d\n", cur_process ? cur_process->pid:-1, p->pid);
+#endif
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -343,6 +363,8 @@ scheduler(void)
       switchuvm(p);
       p->state = RUNNING;
 
+      cur_process=c->proc;
+      
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
@@ -351,7 +373,6 @@ scheduler(void)
       c->proc = 0;
     }
     release(&ptable.lock);
-
   }
 }
 
