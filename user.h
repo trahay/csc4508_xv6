@@ -23,6 +23,8 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int fwait(int slot, int val);
+int fwake(int slot, int val);
 
 // ulib.c
 int stat(const char*, struct stat*);

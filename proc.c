@@ -532,3 +532,61 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+int slots[] = { 0, 0, 0, 0, 0 };
+
+int
+sys_fwait()
+{
+  struct proc *p = myproc();
+  
+  if(p == 0)
+    panic("fwait");
+
+  int slot;
+  int val;
+  
+  argint(0, &slot);
+  argint(1, &val);
+  
+  acquire(&ptable.lock);
+
+  while(slots[slot] != val) {
+    cprintf("waiting slot[%d] - %d (currently %d)\n", slot, val, slots[slot]);
+
+    p->slot = slot;
+    p->state = SLEEPING;
+
+    sched(); // automatically release ptable.lock and require it when elected
+  }
+  
+  release(&ptable.lock);
+
+  return 0;
+}
+
+int
+sys_fwake()
+{
+  int slot;
+  int val;
+  
+  argint(0, &slot);
+  argint(1, &val);
+
+  acquire(&ptable.lock);
+
+  cprintf("slots[%d] <- %d\n", slot, val);
+
+  slots[slot] = val;
+  
+  cprintf("wake-up waiting processes\n");
+  
+  for(struct proc* p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    if(p->state == SLEEPING && p->slot == slot)
+      p->state = RUNNABLE;
+  
+  release(&ptable.lock);
+  
+  return 0;
+}
