@@ -311,6 +311,20 @@ wait(void)
   }
 }
 
+//
+//  Dummy process election: choose the first RUNNABLE process
+//  pable.lock is already held
+//
+struct proc* elect(struct proc* old) {
+  struct proc* p;
+
+  for(p = ptable.proc; p < ptable.proc + NPROC; p++)
+    if(p->state == RUNNABLE)
+      return p;
+
+  return 0;
+}
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -322,7 +336,7 @@ wait(void)
 void
 scheduler(void)
 {
-  struct proc *p;
+  struct proc *p = 0;
   struct cpu *c = mycpu();
   c->proc = 0;
   
@@ -332,10 +346,9 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+    p = elect(p);
 
+    if(p) {
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
