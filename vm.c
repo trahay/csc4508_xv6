@@ -455,8 +455,10 @@ int shm_attach() {
   char* addr;
   int retval = -1;
 
-  if(argint(0, &id) < 0 || argptr(1, &addr, sizeof(addr)) < 0)
+  if(argint(0, &id) < 0 || argint(1, (int*)&addr) < 0) {
+    cprintf("invalid parameters\n");
     return -1;
+  }
 
   cprintf("shm_attach(id = %d)\n", id);
 
