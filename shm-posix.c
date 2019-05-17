@@ -1,3 +1,5 @@
+// compile with: gcc -Wall -Werror -g -O3 shm-posix.c -o shm-posix -lrt
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
