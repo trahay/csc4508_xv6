@@ -34,6 +34,13 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+#define ATTACHED_MAX 8
+
+struct attached_shm{
+  int id;
+  char* addr;
+};
+
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
@@ -50,6 +57,7 @@ struct proc {
   struct inode *cwd;           // Current directory
   int prio;
   char name[16];               // Process name (debugging)
+  struct attached_shm attached[ATTACHED_MAX];
 };
 
 // Process memory is laid out contiguously, low addresses first:

@@ -89,6 +89,9 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
+  for(int i=0; i<ATTACHED_MAX; i++)
+    p->attached[i].id = -1;
+
   release(&ptable.lock);
 
   // Allocate kernel stack.

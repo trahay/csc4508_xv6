@@ -14,6 +14,7 @@ int main(int argc, char**argv) {
     int *buffer = (int*) 0x10000000;
     int ret = shm_attach(fd, buffer);
     if(ret < 0) {
+      exit();
       error("[%d] unable to attach shm\n", getpid());
     }
 
@@ -42,9 +43,10 @@ int main(int argc, char**argv) {
     int *buffer = (int*) 0x20000000;
     int ret = shm_attach(fd, buffer);
     if(ret < 0) {
+      exit();
       error("[%d] unable to attach shm\n", getpid());
     }
-//
+
     sleep(1);
     dprintf("le fils va debloquer le pere\n");
     atomic_store(&buffer[0], 1);

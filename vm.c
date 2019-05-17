@@ -446,7 +446,6 @@ int shm_create() {
 
  out:
   release(&shms.lock);
-  cprintf("[%d] shm_create returns %d\n", myproc()->pid, retval);
   return retval;
 }
 
@@ -469,6 +468,19 @@ int shm_attach() {
 
   acquire(&shms.lock);
 
+  int attached;
+  for(attached=0; attached<ATTACHED_MAX; attached++) {
+    if(myproc()->attached[attached].id == -1) {
+      break;
+    }
+  }
+
+  if (attached == ATTACHED_MAX) {
+    cprintf("Too many attached shm\n");
+    retval = -1;
+    goto out;
+  }
+
   for(int i=0; i<shms.shms[id].npages; i++) {
     char *virt_addr = addr + i*PGSIZE;
     int phys_addr = V2P(shms.shms[id].pages[i]);
@@ -480,6 +492,8 @@ int shm_attach() {
     }
   }
 
+  myproc()->attached[attached].id = id;
+  myproc()->attached[attached].addr = addr;
   shms.shms[id].nused++;
   retval = 0;
  out:
@@ -491,12 +505,71 @@ int shm_detach() {
   int id;
   if(argint(0, &id) < 0 ) return -1;
 
-  return -1;
+  int retval = -1;
+  cprintf("shm_detach(id = %d)\n", id);
+
+  if(id > SHM_MAX || shms.shms[id].npages==0) {
+    cprintf("invalid shm id\n");
+    return -1;
+  }
+
+  acquire(&shms.lock);
+
+  for(int i = 0; i< ATTACHED_MAX; i++) {
+    if(myproc()->attached[i].id == id) {
+
+      shms.shms[id].nused--;
+      for(int p=0; p<shms.shms[id].npages; p++) {
+        char* vaddr = myproc()->attached[i].addr + (p * PGSIZE);
+        pte_t* pte = walkpgdir(myproc()->pgdir, (char*)vaddr, 0);
+
+        if(!pte || !(*pte & PTE_P))
+          panic("unmapped page");
+
+        *pte = 0;
+
+        if(shms.shms[id].nused == 0) {
+          char* addr = shms.shms[id].pages[p];
+          kfree(addr);
+        }
+      }
+
+      myproc()->attached[i].id = -1;
+      retval = 0;
+      goto out;
+    }
+  }
+
+ out:
+  release(&shms.lock);
+  return retval;
 }
 
 int shm_destroy() {
   int id;
   if(argint(0, &id) < 0 ) return -1;
 
-  return -1;
+  int retval = -1;
+  if(id > SHM_MAX || shms.shms[id].npages==0) {
+    cprintf("invalid shm id\n");
+    return -1;
+  }
+
+  acquire(&shms.lock);
+
+  if(shms.shms[id].nused > 0) {
+    cprintf("Cannot destroy shm: %d processes still use it\n", shms.shms[id].nused);
+    goto out;
+  }
+
+  for(int p=0; p<shms.shms[id].npages; p++) {
+    kfree(shms.shms[id].pages[p]);
+  }
+
+  retval = 0;
+
+ out:
+  release(&shms.lock);
+  /* TODO */
+  return retval;
 }
