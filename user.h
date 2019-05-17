@@ -37,3 +37,10 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
+
+#define dprintf(format, ...)  printf(1, format, ##__VA_ARGS__)
+
+#define error(format, ...) do {                         \
+    printf(2, format, ##__VA_ARGS__);\
+    exit();                          \
+  } while(0)
