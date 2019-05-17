@@ -29,3 +29,8 @@ SYSCALL(getpid)
 SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
+
+SYSCALL(shm_create)
+SYSCALL(shm_attach)
+SYSCALL(shm_detach)
+SYSCALL(shm_destroy)

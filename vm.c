@@ -6,6 +6,7 @@
 #include "mmu.h"
 #include "proc.h"
 #include "elf.h"
+#include "spinlock.h"
 
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
@@ -392,3 +393,108 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 //PAGEBREAK!
 // Blank page.
 
+#define SHM_N   16
+#define SHM_MAX 10
+
+struct {
+  struct spinlock lock;
+  struct {
+    char* pages[SHM_MAX]; // 
+    int   npages;
+    int   nused;
+  } shms[SHM_N];
+} shms;
+
+
+int shm_create() {
+  int size;
+  int retval = -1;
+
+  if(argint(0, &size) < 0 ) return -1;
+
+  cprintf("[%d] shm_create(size: %d)\n", myproc()->pid, size);
+
+  int npages = PGROUNDUP(size) / PGSIZE;
+  if(npages > SHM_MAX) {
+    cprintf("max shm is %d bytes long\n", SHM_MAX * PGSIZE);
+    return -1;
+  }
+
+  acquire(&shms.lock);
+  for(int i=0; i<SHM_N; i++) {
+    if(shms.shms[i].npages == 0) {
+      /* we found an available shm */
+      
+      for(int j=0; j<npages; j++) {
+        /* allocate memory pages */
+        shms.shms[i].pages[j] = kalloc();
+        if(shms.shms[i].pages[j] == 0){
+          cprintf("cannot allocate memory\n");
+          for(int k=0; k<j; k++)
+            kfree(shms.shms[i].pages[k]);
+          retval = -1;
+          goto out;
+        }
+        memset(shms.shms[i].pages[j], 0, PGSIZE);
+        shms.shms[i].npages++;
+      }
+      retval = i;
+      goto out;      
+    }
+  }
+  cprintf("no free shm\n");
+
+ out:
+  release(&shms.lock);
+  cprintf("[%d] shm_create returns %d\n", myproc()->pid, retval);
+  return retval;
+}
+
+int shm_attach() {
+  int id;
+  char* addr;
+  int retval = -1;
+
+  if(argint(0, &id) < 0 || argptr(1, &addr, sizeof(addr)) < 0)
+    return -1;
+
+  cprintf("shm_attach(id = %d)\n", id);
+
+  if(id > SHM_MAX || shms.shms[id].npages==0) {
+    cprintf("invalid shm id\n");
+    return -1;
+  }
+
+  acquire(&shms.lock);
+
+  for(int i=0; i<shms.shms[id].npages; i++) {
+    char *virt_addr = addr + i*PGSIZE;
+    int phys_addr = V2P(shms.shms[id].pages[i]);
+    int ret = mappages(myproc()->pgdir, virt_addr, PGSIZE, phys_addr, PTE_W|PTE_U);
+    if(ret < 0) {
+      cprintf("Cannot mmap page\n");
+      retval = -1;
+      goto out;
+    }
+  }
+
+  shms.shms[id].nused++;
+  retval = 0;
+ out:
+  release(&shms.lock);
+  return retval;
+}
+
+int shm_detach() {
+  int id;
+  if(argint(0, &id) < 0 ) return -1;
+
+  return -1;
+}
+
+int shm_destroy() {
+  int id;
+  if(argint(0, &id) < 0 ) return -1;
+
+  return -1;
+}

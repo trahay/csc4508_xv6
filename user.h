@@ -24,6 +24,12 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 
+int shm_create(int size);
+int shm_attach(int id, void* addr);
+int shm_detach(int id);
+int shm_destroy(int id);
+
+  
 // ulib.c
 int stat(const char*, struct stat*);
 char* strcpy(char*, const char*);

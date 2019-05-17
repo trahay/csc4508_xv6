@@ -103,6 +103,10 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
+extern int shm_create();
+extern int shm_attach();
+extern int shm_detach();
+extern int shm_destroy();
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -126,6 +130,10 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_shm_create]	shm_create,
+[SYS_shm_attach]	shm_attach,
+[SYS_shm_detach]	shm_detach,
+[SYS_shm_destroy]	shm_destroy,
 };
 
 void
