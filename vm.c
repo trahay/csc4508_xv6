@@ -406,7 +406,7 @@ struct {
 } shms;
 
 
-int shm_create() {
+int sys_shm_create() {
   int size;
   int retval = -1;
 
@@ -449,7 +449,7 @@ int shm_create() {
   return retval;
 }
 
-int shm_attach() {
+int sys_shm_attach() {
   int id;
   char* addr;
   int retval = -1;
@@ -501,7 +501,7 @@ int shm_attach() {
   return retval;
 }
 
-int shm_detach() {
+int sys_shm_detach() {
   int id;
   if(argint(0, &id) < 0 ) return -1;
 
@@ -545,7 +545,7 @@ int shm_detach() {
   return retval;
 }
 
-int shm_destroy() {
+int sys_shm_destroy() {
   int id;
   if(argint(0, &id) < 0 ) return -1;
 
