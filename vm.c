@@ -394,7 +394,7 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 char* unmappage(pde_t *pgdir, const void* vaddr) {
   pte_t* pte = walkpgdir(myproc()->pgdir, (char*)vaddr, 0);
 
-  if(!pte || !(*pte & PTE_P) || !(*pte & PTE_U))
+  if(!pte || !(*pte & PTE_P))
     panic("unmapped page");
 
   char* res = P2V(PTE_ADDR(*pte));

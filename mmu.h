@@ -178,4 +178,6 @@ struct gatedesc {
   (gate).off_31_16 = (uint)(off) >> 16;                  \
 }
 
+pte_t* walkpgdir(pde_t *pgdir, const void *va, int alloc);
+
 #endif

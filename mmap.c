@@ -8,24 +8,93 @@
 #include "fs.h"
 #include "file.h"
 #include "memlayout.h"
+#include "mmap.h"
+
+int lazymap(uint vaddr, int w) {
+  uint seg;
+  
+  for(seg=0;
+      seg<NSEG && (vaddr < myproc()->segs[seg].vaddr || vaddr >= myproc()->segs[seg].vaddr + myproc()->segs[seg].size);
+      seg++) { }
+
+  if(seg == NSEG)
+    return -1;
+
+  cprintf("== lazy map %p from segment %d (%s access)\n", vaddr, seg, w ? "write" : "read");
+  
+  uint prot = myproc()->segs[seg].prot;
+
+  /* check protection */
+  if(w && !(prot & PROT_WRITE))
+    return -1;
+
+  if(!w && !(prot & PROT_READ))
+    return -1;
+
+  /* handle concurrency */
+  acquiresleep(&myproc()->segs[seg].ip->lock);
+
+  pte_t* pte = walkpgdir(myproc()->pgdir, (char*)vaddr, 0);
+  
+  /* if another core has already mapped the page, we don't have anything to do */ 
+  if(pte && (*pte & PTE_P)) {
+    cprintf("==== concurrent access\n");
+    goto ok;
+  }
+  
+  char* page = kalloc();
+
+  if(!page) {
+    cprintf("kalloc failed\n");
+    goto err_release;
+  }
+  
+  uint offset = PGROUNDDOWN(vaddr) - myproc()->segs[seg].vaddr;
+  uint rem = myproc()->segs[seg].size - offset;
+
+  rem = rem < PGSIZE ? rem : PGSIZE;
+
+  if(readi(myproc()->segs[seg].ip, page, myproc()->segs[seg].offset + offset, rem) == -1) {
+    cprintf("readi failed\n");
+    goto err_kfree;
+  }
+  
+  uint rw = (prot & PROT_READ ? PTE_U : 0) | (prot & PROT_WRITE ? PTE_W : 0);
+
+  if(mappages(myproc()->pgdir, (char*)vaddr, PGSIZE, V2P(page), rw) == -1) {
+    cprintf("mappages failed\n");
+    goto err_kfree;
+  }
+
+ ok:
+  releasesleep(&myproc()->segs[seg].ip->lock);
+  return 0;
+
+ err_kfree:
+  kfree(page);
+  
+ err_release:
+  releasesleep(&myproc()->segs[seg].ip->lock);
+  return -1;
+}
 
 int sys_mmap() {
   uint addr;
   uint size;
   uint prot;
-  uint flag;
+  uint flags;
   uint fd;
   uint offset;
 
   if(argint(0, (int*)&addr) < 0 ||
      argint(1, (int*)&size) < 0 ||
      argint(2, (int*)&prot) < 0 ||
-     argint(3, (int*)&flag) < 0 ||
+     argint(3, (int*)&flags) < 0 ||
      argint(4, (int*)&fd) < 0 ||
      argint(5, (int*)&offset) < 0)
     return -1;
 
-  cprintf("%s(%p, %d, %d, %d, %d, %d)\n", __func__, addr, size, prot, flag, fd, offset);
+  cprintf("%s(%p, %d, %d, %d, %d, %d)\n", __func__, addr, size, prot, flags, fd, offset);
 
   addr = PGROUNDDOWN(addr);
   
@@ -41,47 +110,23 @@ int sys_mmap() {
     return -1;
   }
 
-  uint npages = (PGROUNDUP(addr + size) - addr) / PGSIZE;
-  uint i;
+  uint seg;
   
-  acquiresleep(&f->ip->lock);
-  for(i=0; i<npages; i++) {
-    char* page = kalloc();
-    
-    if(!page) {
-      cprintf("kalloc failed\n");
-      goto err;
-    }
+  for(seg=0; seg<NSEG && myproc()->segs[seg].vaddr; seg++) { }
 
-    uint  cur = i*PGSIZE;
-    uint  rem = size - cur;
-
-    rem = rem < PGSIZE ? rem : PGSIZE;
-    
-    if(readi(f->ip, page, offset + cur, rem) == -1) {
-      cprintf("readi failed\n");
-      kfree(page);
-      goto err;
-    }
-    
-    if(mappages(myproc()->pgdir, (char*)addr + cur, PGSIZE, V2P(page), PTE_W|PTE_U) == -1) {
-      cprintf("mappages failed\n");
-      kfree(page);
-      goto err;
-    }
+  if(seg == NSEG) {
+    cprintf("no more segments");
+    return -1;
   }
-  
-  releasesleep(&f->ip->lock);
+
+  myproc()->segs[seg].vaddr = addr;
+  myproc()->segs[seg].ip = idup(f->ip);
+  myproc()->segs[seg].offset = offset;
+  myproc()->segs[seg].size = size;
+  myproc()->segs[seg].prot = prot;
+  myproc()->segs[seg].flags = flags;
+
   return addr;
-
- err:
-  for(uint j=0; j<i; j++) {
-    char* page = unmappage(myproc()->pgdir, (char*)addr + j*PGSIZE);
-    kfree(page);
-  }
-
-  releasesleep(&f->ip->lock);
-  return -1;
 }
 
 int sys_munmap() {

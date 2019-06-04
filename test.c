@@ -14,7 +14,7 @@
 
 const char name[] = "README";
 
-#define N 10000
+#define N 86
 
 int main() {
   int fd = open(name, O_RDONLY);
@@ -29,7 +29,7 @@ int main() {
 
   dprintf("size: %d bytes\n", stat.size);
 
-  char* addr = mmap((char*)0x10000000, stat.size, 0, 0, fd, 0);
+  char* addr = mmap((char*)0x10000000, stat.size, PROT_READ, 0, fd, 0);
 
   if(addr == MAP_FAILED)
     error("unable to map %s", name);
