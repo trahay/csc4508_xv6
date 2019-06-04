@@ -14,6 +14,8 @@
 
 const char name[] = "README";
 
+#define N 10000
+
 int main() {
   int fd = open(name, O_RDONLY);
 
@@ -32,7 +34,7 @@ int main() {
   if(addr == MAP_FAILED)
     error("unable to map %s", name);
   
-  for(int i=0; i<(stat.size < 86 ? stat.size : 86); i++)
+  for(int i=0; i<(stat.size < N ? stat.size : N); i++)
     dprintf("%c", addr[i]);
   dprintf("\n");
   

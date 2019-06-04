@@ -47,21 +47,28 @@ int sys_mmap() {
   acquiresleep(&f->ip->lock);
   for(i=0; i<npages; i++) {
     char* page = kalloc();
-
+    
     if(!page) {
       cprintf("kalloc failed\n");
       goto err;
     }
+
+    uint  cur = i*PGSIZE;
+    uint  rem = size - cur;
+
+    rem = rem < PGSIZE ? rem : PGSIZE;
     
-    if(mappages(myproc()->pgdir, (char*)addr + i*PGSIZE, PGSIZE, V2P(page), PTE_W|PTE_U) == -1) {
-      cprintf("mappages failed\n");
+    if(readi(f->ip, page, offset + cur, rem) == -1) {
+      cprintf("readi failed\n");
+      kfree(page);
       goto err;
     }
-  }
-
-  if(readi(f->ip, (char*)addr, offset, size) == -1) {
-    cprintf("readi failed\n");
-    goto err;
+    
+    if(mappages(myproc()->pgdir, (char*)addr + cur, PGSIZE, V2P(page), PTE_W|PTE_U) == -1) {
+      cprintf("mappages failed\n");
+      kfree(page);
+      goto err;
+    }
   }
   
   releasesleep(&f->ip->lock);
