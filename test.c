@@ -32,8 +32,9 @@ int main() {
   if(addr == MAP_FAILED)
     error("unable to map %s", name);
   
-  for(int i=0; i<stat.size; i++)
+  for(int i=0; i<(stat.size < 86 ? stat.size : 86); i++)
     dprintf("%c", addr[i]);
+  dprintf("\n");
   
   munmap(addr, stat.size);
   close(fd);
