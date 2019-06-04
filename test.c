@@ -31,6 +31,8 @@ int main() {
 
   if(addr == MAP_FAILED)
     error("unable to map %s", name);
+
+  munmap(addr, stat.size);
   
   exit();
 }
