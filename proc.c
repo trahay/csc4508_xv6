@@ -138,6 +138,7 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
+  p->prio = 255;   // maximum priority
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
@@ -199,6 +200,9 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+
+  // inherits the priority
+  np->prio = curproc->prio;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -316,13 +320,23 @@ wait(void)
 //  pable.lock is already held
 //
 struct proc* elect(struct proc* old) {
+  struct proc* res = 0;
   struct proc* p;
 
-  for(p = ptable.proc; p < ptable.proc + NPROC; p++)
-    if(p->state == RUNNABLE)
-      return p;
+  if(old)
+    old->prio >>= 1;
 
-  return 0;
+  for(p = ptable.proc; p < ptable.proc + NPROC; p++) {
+    if(p->state == RUNNABLE) {
+      if(p->prio < 255)
+        p->prio ++;
+
+      if(!res || res->prio < p->prio)
+        res = p;
+    }
+  }
+
+  return res;
 }
 
 //PAGEBREAK: 42
