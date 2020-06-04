@@ -545,3 +545,30 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+
+int sys_set_priority() {
+  int pid;
+  int priority;
+  if(argint(0, &pid) < 0)
+    return -1;
+  if(argint(1, &priority) < 0)
+    return -1;
+
+  if(pid < 0 || pid > NPROC) {
+    cprintf("Invalid PID %d\n", pid);
+    return -1;
+  }
+
+  acquire(&ptable.lock);
+  struct proc*p = &ptable.proc[pid];
+  if(p->state == UNUSED) {
+    cprintf("Invalid PID %d\n", pid);
+    release(&ptable.lock);
+    return -1;
+  }
+  p->prio = priority;
+  cprintf("Process %d now runs with priority %d\n", pid, priority); 
+  release(&ptable.lock);
+  return 0;
+}
